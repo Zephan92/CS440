@@ -113,6 +113,7 @@ public class MovieTheater {
 	
 	public static int getMovieList()
 	{
+		InitializeMovieList();
 		for (int i = 0; i < movieList.size(); i++) {
 			System.out.println(i+1 + "\t-\t"+movieList.get(i));
 		}
@@ -919,8 +920,8 @@ public static void staffMenu(){//all the menu options for staff members
 						if(menuselect == lastNumber){
 							break;
 						}
-						else if(menuselect > lastNumber)
-							System.out.println("Invalid input\n");
+						//else if(menuselect > lastNumber)
+							//System.out.println("Invalid input\n");
 						else
 						{
 							//list current option and offer their input
@@ -1076,19 +1077,22 @@ public static void staffMenu(){//all the menu options for staff members
 						if(menuselectDelete == lastNumberDelete){
 							break;
 						}
-						else if(menuselectDelete > lastNumberDelete)
-							System.out.println("Invalid input\n");
+						//else if(menuselectDelete > lastNumberDelete)
+						//	System.out.println("Invalid input\n");
 						else
 						{
 							System.out.println("Are you sure you want to delete the showing " + menuselectDelete + "? (y/n)");
 							String delete = input.next();
 							if(delete.equals("y"))
 							{
+								String deleteT = "delete from Tickets where showing_ID = " + menuselectDelete;
 								String deleteQ = "delete from Showings where showing_ID = " + menuselectDelete;
 								try {
 									stmt = connection.createStatement();
-									ResultSet deleteResult = stmt.executeQuery(deleteQ);
-									if(deleteResult.next()){
+									ResultSet deleteResult = stmt.executeQuery(deleteT);
+									Statement stm = connection.createStatement();
+									ResultSet deleteResult2 = stm.executeQuery(deleteQ);
+									if(deleteResult.next()&&deleteResult2.next()){
 										System.out.println("Showing deleted\n\n");
 									}
 									else{delete = "n";}
@@ -1115,10 +1119,10 @@ public static void staffMenu(){//all the menu options for staff members
 
 	
 	public static void searchForMovie() {
+		InitializeMovieList();
 		boolean searchMenu = true;
 		String searchQuery = "select distinct Movies.movie_ID as movie_ID, Movies.title as title from Movies,"
-				+ " Person, involved_in where involved_in.person_ID = Person.person_ID and involved_in.movie_ID"
-				+ "=Movies.movie_ID ";
+				+ " Person, involved_in where Movies.movie_ID>0 ";
 		while(searchMenu){
 			System.out.println("Search Movies by: (type all numbers that apply)\n"
 					+ "1\t-\tTitle\n"
@@ -1139,15 +1143,17 @@ public static void staffMenu(){//all the menu options for staff members
 				System.out.println("Enter the title to search by: (partial title is accepted)");
 				//input.nextLine();
 				String title = input.nextLine();
-				searchQuery = searchQuery + " and upper(Movies.title) like upper('%" + title + "%')";
+				searchQuery = searchQuery + " and upper(Movies.title) like upper('%" + title + "%') ";
 				
 			}
+			
 			if(searchMenuSelect.indexOf("2")!=-1){
 				//search by director + add to total query
 				System.out.println("Enter the director to search by: (partial name is accepted)");
 				//input.nextLine();
 				String director = input.nextLine();
-				searchQuery = searchQuery + " and involved_in.position = 'Director' and "
+				searchQuery = searchQuery + "  involved_in.movie_ID =Movies.movie_ID and "
+						+ "involved_in.person_ID = Person.person_ID and involved_in.position = 'Director' and "
 						+ "upper(Person.name) like upper('%" + director + "%')";
 			}
 			if(searchMenuSelect.indexOf("3")!=-1){
@@ -1155,8 +1161,8 @@ public static void staffMenu(){//all the menu options for staff members
 				System.out.println("Enter the genre to search by: (partial genre is accepted)");
 				//input.nextLine();
 				String genre = input.nextLine();
-				searchQuery = searchQuery + " and upper(Movies.genre2) like upper('%" + genre + "%')"
-						+ " or upper(Movies.genre) like upper('%" + genre + "%')";
+				searchQuery = searchQuery + " and (upper(Movies.genre2) like upper('%" + genre + "%')"
+						+ " or upper(Movies.genre) like upper('%" + genre + "%'))";
 			}
 			if(searchMenuSelect.indexOf("4")!=-1){
 				//search by actor + add to total query
@@ -1164,7 +1170,9 @@ public static void staffMenu(){//all the menu options for staff members
 				//.nextLine();
 				String actor = input.nextLine();
 				
-				searchQuery = searchQuery + " and (involved_in.position = 'Actor' or"
+				searchQuery = searchQuery + " and involved_in.movie_ID =Movies.movie_ID"
+						+ " and involved_in.person_ID = Person.person_ID"
+						+ " and (involved_in.position = 'Actor' or"
 						+ " involved_in.position = 'Actress' or involved_in.position = 'Voice-Actor')"
 						+ " and upper(Person.name) like upper('%" + actor + "%')";
 			}
@@ -1180,6 +1188,7 @@ public static void staffMenu(){//all the menu options for staff members
 			else{
 				
 			try {
+				
 				stmt = connection.createStatement();
 				ResultSet searchResults = stmt.executeQuery(searchQuery);
 				
@@ -1224,8 +1233,7 @@ public static void staffMenu(){//all the menu options for staff members
 			//allow for modification of the search
 		
 			searchQuery = "select distinct Movies.movie_ID as movie_ID, Movies.title as title from Movies,"
-					+ " Person, involved_in where involved_in.person_ID = Person.person_ID and involved_in.movie_ID"
-					+ "=Movies.movie_ID ";//reset the query
+					+ " Person, involved_in where Movies.movie_ID>0 ";//reset the query
 		}
 		}
 		}
@@ -1329,23 +1337,29 @@ public static void staffMenu(){//all the menu options for staff members
 				//figure out the last ID+1 for the next ID of the movie
 				try {
 					int maxID = 0;
-					String maxquery = "select max(rating_movie_id) as max from Rating_Movies";
-					stmt = connection.createStatement();
-					ResultSet result1 = stmt.executeQuery(maxquery);
+					Statement st = connection.createStatement();
+					String maxquery = "select max(movie_id) as max from Movies";
+					//stmt = connection.createStatement();
+					ResultSet result1 = st.executeQuery(maxquery);
 					if(result1.next()){
 					maxID = result1.getInt("max") + 1;
 					}
+					else
+						System.out.println("Failed");
 					
 				System.out.println("\n\nThe movie will be:\nTitle: " + newTitle
 						+"\nGenre: " + newGenre + "\nYear: " + newYear + "\nLength: " + newLength +
 						"\nPG Rating: " + newPGRating + "\n\nWould you like to add this movie to the database? (y/n)");
 				String change = input.next();
+				
 				if(change.equals("y"))
 				{	
 				//add to the database
 				String newMovie = " INSERT INTO Movies VALUES (" + maxID + " , '" + newTitle +"' , '" 
 						+ newGenre +"',"+ newYear+ " , " + newLength+ " , '" + newPGRating +"' , '"+ newGenre2 +"')";
+				
 				ResultSet addMovie = stmt.executeQuery(newMovie);
+				
 				if(addMovie.next())System.out.println("Changes were saved.");
 				else change = "n";
 				}
@@ -1433,6 +1447,7 @@ public static void staffMenu(){//all the menu options for staff members
 				user = input.next();
 				input.nextLine();
 				//check to see if user is already in database and last ID
+				if(user.indexOf('%')==-1&&user.indexOf(39)==-1&&user.indexOf('"')==-1&&user.indexOf(' ')==-1){
 				try {
 					String maxquery = "select max(user_ID) as max from User_New";
 					stmt = connection.createStatement();
@@ -1451,7 +1466,11 @@ public static void staffMenu(){//all the menu options for staff members
 				}catch (SQLException e) {
 					e.printStackTrace();}
 			
-				}		
+				}	
+				else{
+					System.out.println("No invalid symbols allowed.");
+				}
+				}	
 				if(user.indexOf('%')==-1&&user.indexOf(39)==-1&&user.indexOf('"')==-1&&user.indexOf(' ')==-1){
 				while(passloop){
 				System.out.println("Enter a password. No spaces or symbols allowed.");
@@ -1496,6 +1515,7 @@ public static void staffMenu(){//all the menu options for staff members
 			user = input.next();
 			input.nextLine();
 			//check to see if user is already in database and last ID
+			if(user.indexOf('%')==-1&&user.indexOf(39)==-1&&user.indexOf('"')==-1&&user.indexOf(' ')==-1){
 			try {
 				String maxquery = "select max(user_ID) as max from User_New";
 				stmt = connection.createStatement();
@@ -1514,7 +1534,11 @@ public static void staffMenu(){//all the menu options for staff members
 			}catch (SQLException e) {
 				e.printStackTrace();}
 		
-			}		
+			}	
+			else{
+				System.out.println("No invalid symbols allowed.");
+			}
+			}	
 			if(user.indexOf('%')==-1&&user.indexOf(39)==-1&&user.indexOf('"')==-1&&user.indexOf(' ')==-1){
 			while(passloop2){
 			System.out.println("Enter a password. No spaces or symbols allowed.");
