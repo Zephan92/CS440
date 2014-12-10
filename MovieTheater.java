@@ -1,5 +1,6 @@
 //Vanya Yorgova, Rachael Youngworth, Zephan Johnson
 //CS 425 Final Project
+//to create a staff account, the password is databases
 
 import java.sql.DriverManager;
 import java.sql.Connection;
@@ -14,6 +15,7 @@ public class MovieTheater {
 	private static Scanner input = null;
 	private static ArrayList<String> movieList = null;
 	private static ArrayList<Integer> showtimeList = null;
+	@SuppressWarnings("unused")
 	private static boolean loggedIn = false;
 	private static int loggedinID = 0;
 	
@@ -51,6 +53,7 @@ public class MovieTheater {
 		if (connection != null) 
 		{//If connection is not null, start to query
 					
+			InitializeMovieList();
 			boolean menu = true;//variable to control menu loop
 			while(menu)
 			{
@@ -85,18 +88,13 @@ public class MovieTheater {
 			}
 		}
 	}	
-	
-	
 
-	public static int getMovieList()
+	public static void InitializeMovieList()
 	{//this function queries for all movies and sorts them by id.
-		//TODO we could potentially return the array that holds all the movies.
-		int count = 1;
 		try 
 		{
-			stmt = connection.createStatement();
-			
 			String query = "select* from Movies";//This is the main query
+			stmt = connection.createStatement();
 			ResultSet result = stmt.executeQuery(query);
 			
 			movieList = new ArrayList<String>();//small array to hold all movies
@@ -105,28 +103,30 @@ public class MovieTheater {
 			{//Loops through the query to add all the results to the array
 				String title = result.getString("title");
 				movieList.add(title);//stores the title in it's corresponding id slot in the array.
-				count++;
-			}
-				
-			for (int i = 0; i < movieList.size(); i++) {
-				System.out.println(i+1 + "\t-\t"+movieList.get(i));
 			}		
 		} 
 		catch (SQLException e) 
 		{
 			e.printStackTrace();
 		}
-		return count;
 	}
 	
+	public static int getMovieList()
+	{
+		for (int i = 0; i < movieList.size(); i++) {
+			System.out.println(i+1 + "\t-\t"+movieList.get(i));
+		}
+		return movieList.size() + 1;
+	}
 
-
-public static void viewMovieList()
+	public static void viewMovieList()
 	{
 		boolean menu = true;
 		while(menu)
 		{
+			
 			int lastNumber = getMovieList();
+			
 			System.out.println(lastNumber + "\t-\tReturn to Original Menu\n");
 			int menuselect = input.nextInt();
 			if(menuselect == lastNumber)
@@ -135,31 +135,36 @@ public static void viewMovieList()
 				System.out.println("Invalid input\n");
 			else
 			{
-				boolean menu2 = true;
-				while(menu2)
-				{
-					System.out.println("1\t-\tView Showtimes\n"
-						+ "2\t-\tView Ratings\n"
-						+ "3\t-\tView Movie Information\n"
-						+ "4\t-\tPurchase A Ticket\n" 
-						+ "5\t-\tReturn to movie listings");
-					int menu2select = input.nextInt();
-					switch(menu2select)
-					{
-					
-					case 1: getShowtimes(menuselect - 1);
-						break;
-					case 2: viewRatings(menuselect - 1);
-						break;
-					case 3: getMovieInfo(menuselect - 1);
-						break;
-					case 4: viewPurchaseMenu(menuselect - 1);
-						break;
-					case 5:menu2 = false;
-						break;
-					default: System.out.println("Invalid input\n");	
-					}
-				}
+				displayMovieOptionsMenu(menuselect);
+			}
+		}
+	}
+
+	public static void displayMovieOptionsMenu(int menuselect)
+	{
+		boolean menu2 = true;
+		while(menu2)
+		{
+			System.out.println(movieList.get(menuselect - 1) + "\n"
+				+ "1\t-\tView Showtimes\n"
+				+ "2\t-\tView Ratings\n"
+				+ "3\t-\tView Movie Information\n"
+				+ "4\t-\tPurchase A Ticket\n" 
+				+ "5\t-\tReturn to movie listings");
+			int menu2select = input.nextInt();
+			switch(menu2select)
+			{
+			case 1: getShowtimes(menuselect - 1);
+				break;
+			case 2: viewRatings(menuselect - 1);
+				break;
+			case 3: getMovieInfo(menuselect - 1);
+				break;
+			case 4: viewPurchaseMenu(menuselect - 1);
+				break;
+			case 5:menu2 = false;
+				break;
+			default: System.out.println("Invalid input\n");	
 			}
 		}
 	}
@@ -171,12 +176,11 @@ public static void viewMovieList()
 		{
 			stmt = connection.createStatement();
 			
-			String query = "select movie_ID from Movies where title = '" + movieList.get(MovieID) + "'";//This is the main query
-			ResultSet result = stmt.executeQuery(query);
-			result.next();
-			int movie_ID = result.getInt("movie_ID");
+			int movie_ID = getMovieID(MovieID);
 			
-			query = "select distinct time, room_ID, price, showing_ID from Showings, tickets where Showings.showing_ID = Tickets.showing_ID and movie_ID = " + Integer.toString(movie_ID);//This is the main query
+			String query = "select distinct time, room_ID, price, showing_ID "
+					+ "from Showings natural join Tickets "
+					+ "where movie_ID = " + Integer.toString(movie_ID);//This is the main query
 			ResultSet result2 = stmt.executeQuery(query);	
 			
 			showtimeList = new ArrayList<Integer>();
@@ -218,33 +222,39 @@ public static void viewMovieList()
 					System.out.println("Invalid input\n");
 				else
 				{
-					boolean menu2 = true;
-					while(menu2)
-					{
-						System.out.print("Please type in your payment method(Credit, Debit, Cash, etc.): ");
-						String payment = input.next();
-						setPaymentMethod(payment);
-						showSelectedShowing(menuselect - 1, MovieID);
-						System.out.println("Is this the correct showtime and price? y/n");
-						String answer = input.next();
-						if(answer.equals("y"))
-						{
-							System.out.println("Buying a ticket");
-							setPurchaseTicket(menuselect - 1);
-							menu2 = false;
-						}
-						else
-						{
-							System.out.println("Returning to movie list");
-							menu2 = false;
-						}
-					}
+					displayPurchaseMenu(menuselect, MovieID);
 				}
 			}
 		}
 		else
 		{
 			System.out.println("\nPlease login as a non-staff member to continue\n");
+		}
+	}
+	
+	public static void displayPurchaseMenu(int menuselection, int MovieID)
+	{
+		boolean menu2 = true;
+		while(menu2)
+		{
+			System.out.print("Please type in your payment method(Credit, Debit, Cash, etc.): ");
+			String payment = input.next();
+			setPaymentMethod(payment);
+			showSelectedShowing(menuselection - 1, MovieID);
+			System.out.println("Is this the correct showtime and price? y/n");
+			String answer = input.next();
+			if(answer.equals("y"))
+			{
+				System.out.println("Buying a ticket");
+				setPurchaseTicket(menuselection - 1);
+				System.out.println("\n\nYou bought a ticket!\n\n");
+				menu2 = false;
+			}
+			else
+			{
+				System.out.println("Returning to movie list");
+				menu2 = false;
+			}
 		}
 	}
 	
@@ -261,19 +271,18 @@ public static void viewMovieList()
 			{
 				id = maxResult.getInt("max") + 1;
 				
-				String query2 = "select * from Tickets";//This is the main query
+				String query2 = "select * from Tickets where showing_ID = " + showtimeList.get(ShowingID);//This is the main query
 				ResultSet price = stmt.executeQuery(query2);
 				int ticketPrice = 15;
 				if(price.next())
 				{
-					ticketPrice = price.getInt("price");
+						ticketPrice = price.getInt("price");
 				}
 				
 				String query3 = "INSERT INTO Tickets VALUES (" + id 
 						+ ", " + loggedinID + ", " 
 						+ showtimeList.get(ShowingID) + ", " 
 						+ ticketPrice + ")";//This is the main query
-				System.out.println(query3);
 				ResultSet addResult = stmt.executeQuery(query3);
 				if(addResult.next())
 				{
@@ -284,19 +293,11 @@ public static void viewMovieList()
 					System.out.println("Query Failed");
 				}
 			}
-			else
-			{
-				
-			}
-			
 		} 
 		catch (SQLException e) 
 		{
 			e.printStackTrace();
 		}
-		
-		
-	
 	}
 	
 	public static void showSelectedShowing(int ShowingID, int MovieID)
@@ -305,11 +306,11 @@ public static void viewMovieList()
 		{
 			stmt = connection.createStatement();
 			
-			String query = "select distinct time, room_ID, price, showing_ID "
+			String query = "select distinct Showings.time, Showings.room_ID, Tickets.price, Showings.showing_ID "
 					+ "from Showings, Tickets "
 					+ "where Showings.showing_ID = Tickets.showing_ID "
 					+ "and Showings.showing_ID = " + showtimeList.get(ShowingID);//This is the main query
-			System.out.println(query);
+			//System.out.println(query);
 			ResultSet result = stmt.executeQuery(query);
 			
 				while(result.next())
@@ -325,6 +326,32 @@ public static void viewMovieList()
 		{
 			e.printStackTrace();
 		}
+	}
+	
+	public static int getMenuSelectionID(int movie_ID)
+	{
+		int menuSelectionID = 0;
+		try 
+		{
+			stmt = connection.createStatement();
+			
+			String query = "select title from Movies where movie_ID = " + movie_ID;//This is the main query
+			ResultSet result = stmt.executeQuery(query);
+			result.next();
+			for (int i = 0; i < movieList.size(); i++) 
+			{
+				if(movieList.get(i).equals(result.getString("title")))
+				{
+					menuSelectionID = i + 1;
+					break;
+				}
+			}
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
+		return menuSelectionID;
 	}
 	
 	public static void setPaymentMethod(String payment)
@@ -367,14 +394,10 @@ public static void viewMovieList()
 	{
 		try 
 		{
+			int movie_ID = getMovieID(MovieID);
+			
 			stmt = connection.createStatement();
-			
-			String query = "select movie_ID from Movies where title = '" + movieList.get(MovieID) + "'";//This is the main query
-			ResultSet result = stmt.executeQuery(query);
-			result.next();
-			int movie_ID = result.getInt("movie_ID");
-			
-			query = "select * from Showings where movie_ID = " + Integer.toString(movie_ID);//This is the main query
+			String query = "select * from Showings where movie_ID = " + Integer.toString(movie_ID);//This is the main query
 			ResultSet result2 = stmt.executeQuery(query);	
 
 				while(result2.next())
@@ -394,9 +417,8 @@ public static void viewMovieList()
 		try{System.in.read();}  
 		catch(Exception e){}  
 	}
-
-
-	public static void getMovieInfo(int MovieID)
+	
+	public static int getMovieID(int MovieID)
 	{
 		try 
 		{
@@ -405,8 +427,26 @@ public static void viewMovieList()
 			String query = "select movie_ID from Movies where title = '" + movieList.get(MovieID) + "'";//This is the main query
 			ResultSet result = stmt.executeQuery(query);
 			result.next();
-			int movie_ID = result.getInt("movie_ID");
-			query = "select * from Movies where movie_ID = " + Integer.toString(movie_ID);//This is the main query
+			return result.getInt("movie_ID");
+			
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
+		return 0;
+	}
+	
+
+
+	public static void getMovieInfo(int MovieID)
+	{
+		try 
+		{
+			stmt = connection.createStatement();
+			
+			int movie_ID = getMovieID(MovieID);
+			String query = "select * from Movies where movie_ID = " + Integer.toString(movie_ID);//This is the main query
 			ResultSet result2 = stmt.executeQuery(query);
 			result2.next();
 			System.out.print("Movie Title: " + result2.getString("title")
@@ -536,33 +576,6 @@ loggedIn = true;
 		}	
 	}
 
-public static void searchForMovie() {
-	boolean searchMenu = true;
-	while(searchMenu){
-		System.out.println("Search Movies by:\n"
-				+ "1\t-\tTitle\n"
-				+ "2\t-\tDirector\n"
-				+ "3\t-\tGenre\n"
-				+ "4\t-\tActor\n"
-				+ "5\t-\tGo Return to Main Menu");
-	int searchSelect = input.nextInt();
-		switch(searchSelect){
-		case 1:
-			break;
-		case 2:
-			break;
-		case 3:
-			break;
-		case 4:
-			break;
-		case 5: searchMenu = false;
-			break;
-		default: System.out.println("Invalid input");
-			break;
-		}
-	}
-	}
-
 
 public static void memberMenu(){//all the menu options after logging in
 		boolean mm = true;
@@ -617,7 +630,7 @@ public static void rateMovie() {
 			else
 			{
 				try {
-					String maxquery = "select max(rating_movie_id) as max from Rating_Movies";
+					String maxquery = "select max(rating_movie_ID) as max from Rating_Movies";
 					stmt = connection.createStatement();
 					ResultSet result1 = stmt.executeQuery(maxquery);
 					if(result1.next()){
@@ -626,7 +639,7 @@ public static void rateMovie() {
 					double rating = input.nextDouble(); //have the user choose a rating
 					
 					String query2 = " INSERT INTO Rating_Movies VALUES (" + maxID + "," + loggedinID +"," 
-					+ menuselect +","+ rating+")"; //create a query for adding to the database
+					+ getMovieID(menuselect-1) +","+ rating+")"; //create a query for adding to the database
 					ResultSet addRating = stmt.executeQuery(query2);
 					if(addRating.next())
 					{
@@ -679,7 +692,7 @@ public static void ratePerson() {
 		else
 		{
 			try {
-				String maxquery = "select max(rating_person_id) as max from Rating_Person";
+				String maxquery = "select max(rating_person_ID) as max from Rating_Person";
 				stmt = connection.createStatement();
 				ResultSet result1 = stmt.executeQuery(maxquery);
 				if(result1.next()){
@@ -868,7 +881,6 @@ public static void staffMenu(){//all the menu options for staff members
 
 
 	public static void updateShowings() {
-		// TODO Auto-generated method stub
 				boolean menu1 = true;
 				while(menu1){
 					System.out.println("1\t-\tChange Showtime Detail\n"
@@ -957,6 +969,7 @@ public static void staffMenu(){//all the menu options for staff members
 								else 
 									System.out.println("Invalid input, please try again.\n\n");
 								
+								
 							} catch (SQLException e) {
 								e.printStackTrace();
 							}
@@ -998,7 +1011,31 @@ public static void staffMenu(){//all the menu options for staff members
 						String newShowing = " INSERT INTO Showings VALUES (" + maxID + " , " + newMovie + "," 
 								+ newRoom +", '"+ newTime+ "' , " + newTickets+ ")";
 						ResultSet addMovie = stmt.executeQuery(newShowing);
-						if(addMovie.next())System.out.println("Changes were saved.");
+						if(addMovie.next())
+						{
+							//Adding default ticket
+							System.out.print("What price should the ticket cost: ");
+							int ticketPrice = input.nextInt();
+							String max1query = "select max(tickets_ID) as max from Tickets";
+							stmt = connection.createStatement();
+							ResultSet result2 = stmt.executeQuery(max1query);
+							int maxTicketID = 0;
+							if(result2.next()){
+								maxTicketID = result2.getInt("max") + 1;
+							}
+							
+							String addStaffTicket = "insert into Tickets values ("+maxTicketID+", "+7+", "+ maxID+", "+ticketPrice+")";
+							ResultSet addTicket = stmt.executeQuery(addStaffTicket);
+							if(addTicket.next())
+							{
+								System.out.println("\nAdded Staff Ticket");
+								System.out.println("Changes were saved.\n");
+							}
+							else
+							{
+								System.out.println("Did not add staff ticket");
+							}
+						}
 						else change = "n";
 						}
 						else if (change.equals("n"))
@@ -1076,15 +1113,126 @@ public static void staffMenu(){//all the menu options for staff members
 		
 	}
 
-
-	private static void createAccount() {
-		// TODO Auto-generated method stub
-		//check for apostrophes
-		
-	}
 	
+	public static void searchForMovie() {
+		boolean searchMenu = true;
+		String searchQuery = "select distinct Movies.movie_ID as movie_ID, Movies.title as title from Movies,"
+				+ " Person, involved_in where involved_in.person_ID = Person.person_ID and involved_in.movie_ID"
+				+ "=Movies.movie_ID ";
+		while(searchMenu){
+			System.out.println("Search Movies by: (type all numbers that apply)\n"
+					+ "1\t-\tTitle\n"
+					+ "2\t-\tDirector\n"
+					+ "3\t-\tGenre\n"
+					+ "4\t-\tActor\n"
+					+ "5\t-\tGo Return to Main Menu\n");
+		
+			String searchMenuSelect = input.next();
+			input.nextLine();
+			
+			
+			boolean redefineS = true;
+			while(redefineS){
+				
+			if(searchMenuSelect.indexOf("1")!=-1){
+				//search by title +  add to total query
+				System.out.println("Enter the title to search by: (partial title is accepted)");
+				//input.nextLine();
+				String title = input.nextLine();
+				searchQuery = searchQuery + " and upper(Movies.title) like upper('%" + title + "%')";
+				
+			}
+			if(searchMenuSelect.indexOf("2")!=-1){
+				//search by director + add to total query
+				System.out.println("Enter the director to search by: (partial name is accepted)");
+				//input.nextLine();
+				String director = input.nextLine();
+				searchQuery = searchQuery + " and involved_in.position = 'Director' and "
+						+ "upper(Person.name) like upper('%" + director + "%')";
+			}
+			if(searchMenuSelect.indexOf("3")!=-1){
+				//search by genre + add to total query
+				System.out.println("Enter the genre to search by: (partial genre is accepted)");
+				//input.nextLine();
+				String genre = input.nextLine();
+				searchQuery = searchQuery + " and upper(Movies.genre2) like upper('%" + genre + "%')"
+						+ " or upper(Movies.genre) like upper('%" + genre + "%')";
+			}
+			if(searchMenuSelect.indexOf("4")!=-1){
+				//search by actor + add to total query
+				System.out.println("Enter the actor/actress to search by: (partial name is accepted)");
+				//.nextLine();
+				String actor = input.nextLine();
+				
+				searchQuery = searchQuery + " and (involved_in.position = 'Actor' or"
+						+ " involved_in.position = 'Actress' or involved_in.position = 'Voice-Actor')"
+						+ " and upper(Person.name) like upper('%" + actor + "%')";
+			}
+			if(searchMenuSelect.indexOf("5")!=-1){
+				//exit out of menu
+				redefineS = false;
+				searchMenu = false;
+			}
+			else if(searchMenuSelect.indexOf("1")==-1&&searchMenuSelect.indexOf("2")==
+					-1&&searchMenuSelect.indexOf("3")==-1&&searchMenuSelect.indexOf("4")==-1&&searchMenuSelect.indexOf("5")==-1){
+				System.out.println("Invalid input.\n\n");
+			}
+			else{
+				
+			try {
+				stmt = connection.createStatement();
+				ResultSet searchResults = stmt.executeQuery(searchQuery);
+				
+				boolean resultsExist = false;
+				
+				while(searchResults.next()){
+					//getMenuSelectionID()
+					if (!resultsExist)
+						System.out.println("Select Movie for options:");
+					System.out.println(getMenuSelectionID(searchResults.getInt("movie_ID")) + "\t-\t" + searchResults.getString("title"));
+				resultsExist = true;
+				}
+				if (!resultsExist){
+					System.out.println("No results found. Try again\n\n");
+					redefineS = false;
+					//allow for redefining results
+				}
+				else{
+					System.out.println("\n" + "r" + "\t-\tRedefine Search\n"
+							+ "b" + "\t-\tGo back\n");
+					String menuselect = input.next();
+					input.nextLine();
+					if(menuselect.equals("r")){
+						//redefine search
+					}
+					else if(menuselect.equals("b")){
+						//go back
+						redefineS = false;
+						}
+					else
+					displayMovieOptionsMenu(Integer.parseInt((menuselect)));
+					//enter a menu loop that lets you pick a movie and get info about it
+					//option for redefining results
+					
+				}
+				
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			}
+			//show the search results
+			//allow for modification of the search
+		
+			searchQuery = "select distinct Movies.movie_ID as movie_ID, Movies.title as title from Movies,"
+					+ " Person, involved_in where involved_in.person_ID = Person.person_ID and involved_in.movie_ID"
+					+ "=Movies.movie_ID ";//reset the query
+		}
+		}
+		}
+
+	
+
 	public static void updateMovies() {
-		// TODO Auto-generated method stub
 		boolean menu1 = true;
 		while(menu1){
 			System.out.println("1\t-\tChange Movie Detail\n"
@@ -1255,4 +1403,158 @@ public static void staffMenu(){//all the menu options for staff members
 			}
 		}	
 	}
+	
+	public static void createAccount() {
+		//check for apostrophes!!
+		input.nextLine();
+		String user = "";
+		String pass = "";
+		String staffpass, passcheck;
+		char status;
+		int maxID = 0;
+		boolean loopcontrol = true;
+		boolean loopmember = true;
+		boolean passloop = true;
+		boolean passloop2 = true;
+		
+			
+		
+		System.out.println("\n\nWould you like to create a staff or member account? (enter s or m)\n");
+		String type = input.nextLine();
+		if(type.equals("s")){//create the staff account
+			status = 'S';
+			System.out.println("A staff passcode is needed to create a staff account.\n"
+					+ "Enter staff passcode.\n");
+			 staffpass = input.nextLine();
+			if(staffpass.equals("databases")){ //Apostrophes
+				
+				while(loopcontrol){
+				System.out.println("Enter a username. No spaces or symbols allowed.");
+				user = input.next();
+				input.nextLine();
+				//check to see if user is already in database and last ID
+				try {
+					String maxquery = "select max(user_ID) as max from User_New";
+					stmt = connection.createStatement();
+					ResultSet result1 = stmt.executeQuery(maxquery);
+					if(result1.next()){
+						maxID = result1.getInt("max") + 1;// and find the last user_ID
+						
+						String existsQ = "select name from User_New where name = '" + user +"'";
+						ResultSet resultExists = stmt.executeQuery(existsQ);
+						if(resultExists.next()){
+							System.out.println("Username already exists in database. Choose a different username.\n");
+						}
+						else
+							loopcontrol = false;
+				} 
+				}catch (SQLException e) {
+					e.printStackTrace();}
+			
+				}		
+				if(user.indexOf('%')==-1&&user.indexOf(39)==-1&&user.indexOf('"')==-1&&user.indexOf(' ')==-1){
+				while(passloop){
+				System.out.println("Enter a password. No spaces or symbols allowed.");
+					pass = input.next();
+					input.nextLine();
+					if(pass.indexOf('%')==-1&&pass.indexOf(39)==-1&&pass.indexOf('"')==-1&&pass.indexOf(' ')==-1){
+						System.out.println("Enter the password again");
+						passcheck = input.next();
+						input.nextLine();
+						if(pass.equals(passcheck)){
+							String newUser = " INSERT INTO User_New VALUES (" + maxID + " , '" + user + "','" 
+									+ status +"', '"+ pass+ "' )";//add to database
+							ResultSet addUser;
+							try {
+								addUser = stmt.executeQuery(newUser);
+								addUser.next();
+							} catch (SQLException e) {
+								e.printStackTrace();
+							}
+							
+							System.out.println("Your account has been created.\n Login to continue\n\n");
+							passloop = false;
+						}
+						else
+							System.out.println("The passwords do not match.");
+					}
+					else
+						System.out.println("Invalid password");
+				}
+				}
+				else
+					System.out.println("Invalid username");
+			}
+			else
+				System.out.println("Invalid staff password.\n\n");
+		}
+		else if (type.equals("m")){//create the member account
+			status = 'U';
+			
+			while(loopmember){
+			System.out.println("Enter a username. No spaces or symbols allowed.");
+			user = input.next();
+			input.nextLine();
+			//check to see if user is already in database and last ID
+			try {
+				String maxquery = "select max(user_ID) as max from User_New";
+				stmt = connection.createStatement();
+				ResultSet result1 = stmt.executeQuery(maxquery);
+				if(result1.next()){
+					maxID = result1.getInt("max") + 1;// and find the last user_ID
+					
+					String existsQ = "select name from User_New where name = '" + user +"'";
+					ResultSet resultExists = stmt.executeQuery(existsQ);
+					if(resultExists.next()){
+						System.out.println("Username already exists in database. Choose a different username.\n");
+					}
+					else
+						loopmember = false;
+			} 
+			}catch (SQLException e) {
+				e.printStackTrace();}
+		
+			}		
+			if(user.indexOf('%')==-1&&user.indexOf(39)==-1&&user.indexOf('"')==-1&&user.indexOf(' ')==-1){
+			while(passloop2){
+			System.out.println("Enter a password. No spaces or symbols allowed.");
+				pass = input.next();
+				input.nextLine();
+				if(pass.indexOf('%')==-1&&pass.indexOf(39)==-1&&pass.indexOf('"')==-1&&pass.indexOf(' ')==-1){
+					System.out.println("Enter the password again");
+					passcheck = input.next();
+					input.nextLine();
+					if(pass.equals(passcheck)){
+						String newUser = " INSERT INTO User_New VALUES (" + maxID + " , '" + user + "','" 
+								+ status +"', '"+ pass+ "' )";//add to database
+						ResultSet addUser;
+						try {
+							addUser = stmt.executeQuery(newUser);
+							addUser.next();
+						} catch (SQLException e) {
+							e.printStackTrace();
+						}
+						
+						System.out.println("Your account has been created.\n Login to continue\n\n");
+						passloop2 = false;
+					}
+					else
+						System.out.println("The passwords do not match.");
+				}
+				else
+					System.out.println("Invalid password");
+			}
+			}
+			else
+				System.out.println("Invalid username");
+		}
+		else
+			System.out.println("Invalid input\n\n");
+	}
 }
+
+
+//end
+
+
+
