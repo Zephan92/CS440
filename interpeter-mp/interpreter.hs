@@ -226,7 +226,7 @@ liftIntOp op (IntVal x) (IntVal y) = IntVal $ op x y
 
 liftBoolOp op (BoolVal x) (BoolVal y) = BoolVal $ op x y
 
-liftCompOp = undefined
+liftCompOp op (IntVal x) (IntVal y) = BoolVal $ op x y -- what happens when you compare bools?
 
 -- The Evaluator
 
@@ -236,17 +236,34 @@ eval (VarExp s) env =
    case H.lookup s env of
      Just v -> v
      Nothing -> IntVal 0
-eval (IfExp e1 e2 e3) env = undefined
-eval (CompOpExp op e1 e2) env = undefined
-eval (IntOpExp op e1 e2) env = undefined
+eval (IfExp e1 e2 e3) env 
+	| True = let v2 = eval e2 env in v2 -- convert e1 to Bool somehow???
+	| otherwise   = let v3 = eval e3 env in v3
+eval (CompOpExp op e1 e2) env =
+    let v1 = eval e1 env
+        v2 = eval e2 env
+        Just cop = H.lookup op compOps
+    in liftCompOp cop v1 v2 -- need to add liftCompOp function
+eval (IntOpExp op e1 e2) env = 
+   let v1 = eval e1 env
+       v2 = eval e2 env
+       Just iop = H.lookup op intOps
+    in liftIntOp iop v1 v2
 eval (BoolOpExp op e1 e2) env =
    let v1 = eval e1 env
        v2 = eval e2 env
        Just bop = H.lookup op boolOps
     in liftBoolOp bop v1 v2
 eval (FunExp params body) env = undefined
-eval (AppExp e1 args) env undefined
-eval (LetExp pairs body) env undefined
+--	let b = eval body env 
+--	in params b -- not sure what do with params or how it relates to b
+eval (AppExp e1 (x:xs)) env = undefined
+--    let v1 = eval e1 env
+--        v2 = eval x env -- somehow extract each argument, might need to do some recursive calls to make a values list
+--    in case v1 of
+--       CloVal s body env' -> eval body ((s,v2) : env') -- might need to fix v2 in this
+--        _               -> error "Not a function."
+eval (LetExp pairs body) env = undefined -- no idea what to do with this evaluation
 
 exec :: Stmt -> PEnv -> Env -> Result
 exec (PrintStmt e) penv env = do
