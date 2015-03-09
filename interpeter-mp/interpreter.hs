@@ -237,8 +237,8 @@ eval (VarExp s) env =
      Just v -> v
      Nothing -> IntVal 0
 eval (IfExp e1 e2 e3) env 
-	| True = let v2 = eval e2 env in v2 -- convert e1 to Bool somehow???
-	| otherwise   = let v3 = eval e3 env in v3
+	| let BoolVal v1 = eval e1 env in v1  = let v2 = eval e2 env in v2 -- convert e1 to Bool somehow???
+	| otherwise                             = let v3 = eval e3 env in v3
 eval (CompOpExp op e1 e2) env =
     let v1 = eval e1 env
         v2 = eval e2 env
@@ -257,13 +257,15 @@ eval (BoolOpExp op e1 e2) env =
 eval (FunExp params body) env = undefined
 --	let b = eval body env 
 --	in params b -- not sure what do with params or how it relates to b
-eval (AppExp e1 (x:xs)) env = undefined
+eval (AppExp e1 args) env = undefined
 --    let v1 = eval e1 env
 --        v2 = eval x env -- somehow extract each argument, might need to do some recursive calls to make a values list
 --    in case v1 of
 --       CloVal s body env' -> eval body ((s,v2) : env') -- might need to fix v2 in this
 --        _               -> error "Not a function."
-eval (LetExp pairs body) env = undefined -- no idea what to do with this evaluation
+eval (LetExp pairs body) env = 
+   let nuenv = Prelude.foldr (\(v,e) nuenv -> H.insert v(eval e env) nuenv) env pairs
+   in eval body nuenv
 
 exec :: Stmt -> PEnv -> Env -> Result
 exec (PrintStmt e) penv env = do
@@ -272,9 +274,11 @@ exec (PrintStmt e) penv env = do
 exec (SetStmt var e) penv env = do
    let val = eval e env
    return (penv, H.insert var val env)
-exec p@(ProcedureStmt name args body) penv env = undefined
+exec p@(ProcedureStmt name args body) penv env = 
+   return (H.insert name p penv, env)
 exec (CallStmt name args) penv env = undefined
-
+--   let Just (ProcedureStmt _ params body) = H.lookup name penv
+--   in/return eval name args env -- no idea how the let works in the statement above
 
 repl :: PEnv -> Env -> [String] -> String -> Result
 repl penv env [] _ =
